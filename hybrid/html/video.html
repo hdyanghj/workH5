@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="x-ua-compatible" content="IE=edge" >
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no"/>
+<title></title>
+<link rel="stylesheet" href="https://g.alicdn.com/de/prismplayer/2.8.1/skins/default/aliplayer-min.css" />
+<style>
+	.prism-player .prism-cover {
+    background-repeat: no-repeat;
+    z-index: 11;
+	}
+	.prism-player .prism-ErrorMessage, .prism-player .prism-cover {
+    width: 100%;
+    height: 100%;
+    background-position: center;
+    background-size: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+	}
+</style>
+<script type="text/javascript" charset="utf-8" src="https://g.alicdn.com/de/prismplayer/2.8.1/aliplayer-min.js"></script>
+<script type="text/javascript" src="./js/jquery-3.3.1.min.js"></script>
+<!-- 在生产版本中引入aliiplayer-vod-anti-min.js文件开启防调试模式 -->
+<!-- <script src="https://g.alicdn.com/de/prismplayer/2.8.0/hls/aliplayer-vod-anti-min.js"></script> -->
+<!-- uni 的 SDK -->
+<script type="text/javascript" src="https://js.cdn.aliyun.dcloud.net.cn/dev/uni-app/uni.webview.1.5.1.js"></script>
+</head>
+<body>
+<div id="video"></div>
+<script>
+	var num = 0;
+	var player = '';
+	var playAuth = '';
+	var videoId = '';
+	var list = location.search.substring(1).split("&");
+	var args = [];
+	for (var i in list) {
+		var key = list[i].split("=")[0];
+		var value = list[i].split("=")[1];
+		args[key] = value;
+	}
+	console.log(args)
+	console.log(args.playingRecordHttp)
+	var videoIndex = args.videoIndex;
+	var allVideoId = args.allVideoId.split(',');
+	var allVideoTitle = args.allVideoTitle.split(',');
+	document.getElementsByTagName("title")[0].innerText = decodeURIComponent(allVideoTitle[videoIndex]);
+	var allVideoPlayStatus = args.allVideoPlayStatus.split(',');
+	var weburl = args.playingVideoHttp;
+	var token = args.token;
+	var playingRecordHttp = args.playingRecordHttp;
+	
+	/**
+	 * Android平台的视频全屏旋转
+	 */ 
+	function fullScreenOfAndroid () {
+		if(true) {
+			// 最新5+API的支持
+			var self = plus.webview.currentWebview();
+			self.setStyle({
+				videoFullscreen: 'landscape'
+			});
+		} else {
+			// 如果暂未更新sdk，可以先使用差量升级等方式，做出兼容处理；
+			// 旧版本下的兼容处理
+			document.addEventListener('webkitfullscreenchange', function() {
+				var el = document.webkitFullscreenElement; //获取全屏元素
+				if(el) {
+				   plus.screen.lockOrientation('landscape'); //锁死屏幕方向为横屏
+					
+				} else {
+					plus.screen.unlockOrientation(); //解除屏幕方向的锁定
+				}
+			});
+	 
+		}
+	}
+	/**
+	 * 加载视频
+	 */
+	function loadingVideo () {
+		var playurl = '';
+		var playdata = {};
+		if (token != '') {
+			playurl = weburl+'video/v1.1/play';
+			playdata = {
+				videoId: allVideoId[videoIndex],
+				token: token
+			}
+		} else {
+			playurl = weburl+'video/v1.0/freeplay';
+			playdata = {
+				videoId: allVideoId[videoIndex]
+			}
+		}
+		$("#video").html('<div class="prism-player" id="player-con"></div>');
+		$.ajax({
+			type: "GET",
+			url: playurl,
+			data: playdata,
+			async: false,
+			dataType: "json",
+			success: function(data){
+				console.log(JSON.stringify(data))
+				console.log(data.data.coverUrl)
+				if(data.code == 0){
+						let coverUrl = data.data.coverUrl;
+						videoId = data.data.videoId;
+						playAuth =data.data.playAuth;
+						player = new Aliplayer({
+						"id": "player-con",
+						"playauth": playAuth,
+						"vid": videoId,
+						"width": "100%",
+						"videoWidth": "100%",
+						"height": "280px",
+						"padding": '0px',
+						"autoplay": true,
+						"cover": coverUrl,
+						"isLive": false,
+						"rePlay": false,
+						"playsinline": true,
+						"preload": true,
+						"controlBarVisibility": "hover",
+						"useH5Prism": true,
+						"skinLayout": [
+						    {
+						      "name": "bigPlayButton",
+						      "align": "blabs",
+						      "x": 30,
+						      "y": 80
+						    },
+						    {
+						      "name": "H5Loading",
+						      "align": "cc"
+						    },
+						    {
+						      "name": "errorDisplay",
+						      "align": "tlabs",
+						      "x": 0,
+						      "y": 0
+						    },
+						    {
+						      "name": "infoDisplay"
+						    },
+						    {
+						      "name": "tooltip",
+						      "align": "blabs",
+						      "x": 0,
+						      "y": 56
+						    },
+						    {
+						      "name": "thumbnail"
+						    },
+						    {
+						      "name": "controlBar",
+						      "align": "blabs",
+						      "x": 0,
+						      "y": 0,
+						      "children": [
+						        {
+						          "name": "progress",
+						          "align": "blabs",
+						          "x": 0,
+						          "y": 44
+						        },
+						        {
+						          "name": "playButton",
+						          "align": "tl",
+						          "x": 15,
+						          "y": 12
+						        },
+						        {
+						          "name": "timeDisplay",
+						          "align": "tl",
+						          "x": 10,
+						          "y": 7
+						        },
+						        {
+						          "name": "fullScreenButton",
+						          "align": "tr",
+						          "x": 10,
+						          "y": 12
+						        },
+						        {
+						          "name": "setting",
+						          "align": "tr",
+						          "x": 15,
+						          "y": 12
+						        },
+						        {
+						          "name": "volume",
+						          "align": "tr",
+						          "x": 5,
+						          "y": 10
+						        }
+						      ]
+						    }
+						  ]
+						}, function (player) {
+							//console.log(player.getStatus());
+							// totalTime  总播放时间
+							$(".prism-big-play-btn").attr("style","position: absolute;left: 50%;bottom: 50%;margin-bottom: -32px;margin-left: -32px;display: block;");
+						    player._switchLevel = 0;
+							fullScreenOfAndroid();
+						} 
+					);
+				}	
+			}
+		});
+	}
+	
+	/**
+	 * 视频观看记录
+	 */
+	function playingRecord (videoId,time) {
+		$.ajax({
+			type: "GET",
+			url: playingRecordHttp,
+			data: {
+				videoId: videoId,
+				playLength: time,
+				token: token
+			},
+			dataType: "json",
+			success: function(data) {
+				console.log("视频观看记录："+JSON.stringify(data));
+			}
+		});
+	}
+	
+	document.addEventListener('UniAppJSBridgeReady', function() {
+		if (num == 0) {
+			loadingVideo();
+		}
+		num++;
+		player.on('timeupdate',function(){
+			//console.log(1)
+			var time = player.getCurrentTime().toFixed(0);
+			if (time != 0) {
+				uni.postMessage({
+					data: {
+						playLength: time
+					}
+				});
+				localStorage.setItem("playLength",time);
+			}
+		});
+		
+		player.on('ended',function(){
+			if (videoIndex!=allVideoId.length-1) {
+				videoIndex++;
+				//if (allVideoPlayStatus[videoIndex] == 3) {//若该视频免费,则播放
+					console.log("播放下一节")
+					console.log(videoIndex)
+					console.log(JSON.stringify(allVideoId))
+					console.log(allVideoId[videoIndex])
+					document.getElementsByTagName("title")[0].innerText = decodeURIComponent(allVideoTitle[videoIndex]);
+					var playurl = '';
+					var playdata = {};
+					if (token != '') {
+						playurl = weburl+'video/v1.1/play';
+						playdata = {
+							videoId: allVideoId[videoIndex],
+							token: token
+						}
+					} else {
+						playurl = weburl+'video/v1.0/freeplay';
+						playdata = {
+							videoId: allVideoId[videoIndex]
+						}
+					}
+					$.ajax({
+						type: "GET",
+						url: playurl,
+						data: playdata,
+						dataType: "json",
+						success: function(data){
+							console.log(JSON.stringify(data))
+							player.replayByVidAndPlayAuth(data.data.videoId,data.data.playAuth);
+							if (token != '') {
+								var time = 0;
+								player.on('timeupdate',function(){
+									time = player.getCurrentTime().toFixed(0);
+								});
+								player.on('ended',function(){
+									playingRecord(allVideoId[videoIndex],time);
+								});
+							}
+						}
+					});
+				//}
+			}
+		});
+	});
+	
+</script>
+</body>
+</html>
